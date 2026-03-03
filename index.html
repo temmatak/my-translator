@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI翻訳ツール Pro + Voice</title>
+    <style>
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; display: flex; justify-content: center; padding: 20px; background: #e9ecef; }
+        .container { background: white; padding: 25px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 550px; }
+        h2 { text-align: center; color: #2c3e50; margin-bottom: 20px; }
+        
+        .controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; background: #f8f9fa; padding: 10px; border-radius: 8px; }
+        #mode-text { font-weight: bold; color: #495057; }
+        
+        .input-wrapper { position: relative; }
+        textarea { width: 100%; height: 120px; padding: 15px; border: 2px solid #dee2e6; border-radius: 10px; box-sizing: border-box; resize: none; font-size: 16px; transition: border-color 0.2s; }
+        textarea:focus { outline: none; border-color: #007bff; }
+        
+        /* 音声入力ボタンのスタイル */
+        #mic-btn {
+            position: absolute; bottom: 10px; right: 10px;
+            background: #f1f3f5; border: 1px solid #ced4da; border-radius: 50%;
+            width: 40px; height: 40px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+            font-size: 18px; transition: 0.2s;
+        }
+        #mic-btn.recording { background: #ff4757; color: white; border-color: #ff4757; animation: pulse 1.5s infinite; }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .btn-group { display: flex; gap: 10px; margin-top: 15px; }
+        button { padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: all 0.2s; font-size: 14px; }
+        
+        #translate-btn { background: #007bff; color: white; flex: 2; width: 100%; margin-top: 10px; }
+        #translate-btn:hover { background: #0056b3; }
+        #switch-btn { background: #6c757d; color: white; width: 100px; }
+        
+        .result-container { margin-top: 25px; position: relative; }
+        .output-label { font-size: 0.9em; color: #6c757d; font-weight: bold; margin-bottom: 8px; display: block; }
+        #result-area { min-height: 100px; background: #f1f3f5; border-radius: 10px; padding: 15px; color: #212529; line-height: 1.5; font-size: 17px; white-space: pre-wrap; }
+        
+        .action-buttons { display: flex; gap: 8px; margin-top: 10px; justify-content: flex-end; }
+        .icon-btn { background: #fff; border: 1px solid #ced4da; color: #495057; padding: 8px 12px; font-size: 12px; display: flex; align-items: center; gap: 5px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>🔄 AI翻訳ツール Pro</h2>
+    
+    <div class="controls">
+        <span id="mode-text">🇯🇵 日本語 → 🇺🇸 英語</span>
+        <button id="switch-btn">言語切替</button>
+    </div>
+
+    <div class="input-wrapper">
+        <textarea id="input-text" placeholder="ここに日本語を入力してください..."></textarea>
+        <button id="mic-btn" title="音声入力">🎤</button>
+    </div>
+    
+    <button id="translate-btn">翻訳を実行</button>
+
+    <div class="result-container">
+        <span class="output-label">翻訳結果:</span>
+        <div id="result-area">結果がここに表示されます</div>
+        
+        <div class="action-buttons">
+            <button id="copy-btn" class="icon-btn">📋 コピー</button>
+            <button id="speak-btn" class="icon-btn">🔊 音声読上げ</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let isJpToEn = true;
+    const modeText = document.getElementById('mode-text');
+    const inputArea = document.getElementById('input-text');
+    const resultArea = document.getElementById('result-area');
+    const switchBtn = document.getElementById('switch-btn');
+    const translateBtn = document.getElementById('translate-btn');
+    const copyBtn = document.getElementById('copy-btn');
+    const speakBtn = document.getElementById('speak-btn');
+    const micBtn = document.getElementById('mic-btn');
+
+    // 1. 言語モードの切り替え
+    switchBtn.addEventListener('click', () => {
+        isJpToEn = !isJpToEn;
+        modeText.innerText = isJpToEn ? "🇯🇵 日本語 → 🇺🇸 英語" : "🇺🇸 英語 → 🇯🇵 日本語";
+        inputArea.placeholder = isJpToEn ? "ここに日本語を入力..." : "Enter English text...";
+    });
+
+    // 2. 音声認識 (Speech Recognition)
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+        const recognition = new SpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = false;
+
+        micBtn.addEventListener('click', () => {
+            recognition.lang = isJpToEn ? 'ja-JP' : 'en-US';
+            if (micBtn.classList.contains('recording')) {
+                recognition.stop();
+            } else {
+                recognition.start();
+            }
+        });
+
+        recognition.onstart = () => {
+            micBtn.classList.add('recording');
+            micBtn.innerText = "🛑";
+        };
+
+        recognition.onend = () => {
+            micBtn.classList.remove('recording');
+            micBtn.innerText = "🎤";
+        };
+
+        recognition.onresult = (event) => {
+            const transcript = event.results[0][0].transcript;
+            inputArea.value = transcript;
+            // 音声入力が終わったら自動で翻訳を実行
+            translateBtn.click();
+        };
+
+        recognition.onerror = (event) => {
+            console.error("音声認識エラー:", event.error);
+            micBtn.classList.remove('recording');
+            micBtn.innerText = "🎤";
+        };
+    } else {
+        micBtn.style.display = 'none';
+        console.warn("このブラウザは音声認識に対応していません。");
+    }
+
+    // 3. 翻訳の実行
+    translateBtn.addEventListener('click', async () => {
+        const text = inputArea.value.trim();
+        if (!text) return;
+
+        resultArea.innerText = "翻訳中...";
+        const langPair = isJpToEn ? "ja|en" : "en|ja";
+        const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${langPair}`;
+
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
+            resultArea.innerText = data.responseData.translatedText;
+        } catch (error) {
+            resultArea.innerText = "エラーが発生しました。";
+        }
+    });
+
+    // 4. コピー機能
+    copyBtn.addEventListener('click', () => {
+        const text = resultArea.innerText;
+        if (!text || text === "結果がここに表示されます") return;
+        navigator.clipboard.writeText(text).then(() => {
+            const original = copyBtn.innerText;
+            copyBtn.innerText = "✅ 完了";
+            setTimeout(() => copyBtn.innerText = original, 2000);
+        });
+    });
+
+    // 5. 音声読み上げ
+    speakBtn.addEventListener('click', () => {
+        const text = resultArea.innerText;
+        if (!text || text === "結果がここに表示されます") return;
+        window.speechSynthesis.cancel();
+        const uttr = new SpeechSynthesisUtterance(text);
+        uttr.lang = isJpToEn ? 'en-US' : 'ja-JP';
+        window.speechSynthesis.speak(uttr);
+    });
+</script>
+
+</body>
+</html>
