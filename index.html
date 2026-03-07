@@ -3,85 +3,128 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Easy Translator</title>
+    <title>Translator Pro</title>
     <style>
-        body { font-family: sans-serif; background: #f4f7f6; display: flex; justify-content: center; padding: 20px; }
-        .container { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
-        h1 { font-size: 1.2rem; color: #333; text-align: center; }
-        textarea { width: 100%; height: 100px; padding: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; margin-bottom: 10px; }
+        body { font-family: sans-serif; background: #f0f4f8; display: flex; justify-content: center; padding: 20px; }
+        .container { background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
         
-        .button-group { display: flex; gap: 10px; margin-bottom: 15px; }
-        .btn { flex: 1; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: bold; transition: 0.2s; }
+        /* モード表示の強調 */
+        .mode-container { 
+            background: #e2e8f0; padding: 10px; border-radius: 10px; 
+            margin-bottom: 15px; text-align: center; font-weight: bold; color: #2d3748;
+        }
+        #mode-text { color: #4a90e2; font-size: 1.1rem; }
+
+        textarea { width: 100%; height: 120px; padding: 12px; border: 2px solid #cbd5e0; border-radius: 10px; box-sizing: border-box; font-size: 16px; margin-bottom: 10px; outline: none; }
+        textarea:focus { border-color: #4a90e2; }
+
+        .button-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .btn { padding: 15px; border: none; border-radius: 10px; cursor: pointer; font-size: 16px; font-weight: bold; transition: 0.2s; }
         
-        .btn-translate { background: #4a90e2; color: white; }
-        .btn-clear { background: #e0e0e0; color: #666; } /* クリアボタンのデザイン */
-        .btn-mic { background: #ff5e5e; color: white; }
-        
-        .btn:active { transform: scale(0.98); opacity: 0.8; }
-        
-        #result-area { background: #f9f9f9; padding: 15px; border-radius: 8px; border-left: 5px solid #4a90e2; min-height: 50px; font-size: 18px; color: #333; }
+        /* 各ボタンの色 */
+        .btn-switch { background: #4a5568; color: white; }
+        .btn-clear { background: #edf2f7; color: #4a5568; }
+        .btn-translate { background: #4a90e2; color: white; grid-column: span 2; }
+        .btn-mic { background: #f56565; color: white; grid-column: span 2; }
+
+        .btn:active { transform: scale(0.95); }
+
+        #result-area { 
+            margin-top: 20px; padding: 15px; background: #f8fafc; border-radius: 10px; 
+            border-left: 6px solid #4a90e2; min-height: 60px; font-size: 1.1rem; color: #1a202c;
+            word-wrap: break-word;
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>🌍 My Translator</h1>
+    <div class="mode-container">
+        <span id="mode-text">🇯🇵 日本語 ➔ 🇺🇸 英語</span>
+    </div>
     
-    <textarea id="source-text" placeholder="ここに日本語を入力、または音声で話してください..."></textarea>
+    <textarea id="source-text" placeholder="ここに文字を入力..."></textarea>
     
-    <div class="button-group">
-        <button class="btn btn-clear" onclick="clearText()">クリア</button>
-        <button class="btn btn-translate" onclick="translateText()">翻訳</button>
-        <button class="btn btn-mic" id="mic-btn">🎤 音声</button>
+    <div class="button-grid">
+        <button class="btn btn-switch" onclick="toggleMode()">🔄 入れ替え</button>
+        <button class="btn btn-clear" onclick="clearAll()">🗑️ クリア</button>
+        <button class="btn btn-translate" onclick="executeTranslation()">翻訳を実行</button>
+        <button class="btn btn-mic" id="mic-btn">🎤 音声入力</button>
     </div>
 
-    <div id="result-area">翻訳結果がここに表示されます</div>
+    <div id="result-area">結果が表示されます</div>
 </div>
 
 <script>
+    // 状態管理用変数
+    let currentMode = 'ja-en'; // 'ja-en' または 'en-ja'
+
+    const modeText = document.getElementById('mode-text');
     const sourceText = document.getElementById('source-text');
     const resultArea = document.getElementById('result-area');
 
-    // 1. 文字を消去する機能（今回追加）
-    function clearText() {
-        sourceText.value = "";       // 入力エリアを空にする
-        resultArea.innerText = "翻訳結果がここに表示されます"; // 結果表示をリセット
+    // モードを切り替える関数
+    function toggleMode() {
+        if (currentMode === 'ja-en') {
+            currentMode = 'en-ja';
+            modeText.innerText = "🇺🇸 英語 ➔ 🇯🇵 日本語";
+            sourceText.placeholder = "Enter English text...";
+        } else {
+            currentMode = 'ja-en';
+            modeText.innerText = "🇯🇵 日本語 ➔ 🇺🇸 英語";
+            sourceText.placeholder = "日本語を入力してください...";
+        }
+        // 切り替え時に一旦クリアする
+        clearAll();
     }
 
-    // 2. 翻訳機能（MyMemory API）
-    async function translateText() {
-        const text = sourceText.value;
+    // 全てクリアする関数
+    function clearAll() {
+        sourceText.value = "";
+        resultArea.innerText = "結果が表示されます";
+    }
+
+    // 翻訳実行
+    async function executeTranslation() {
+        const text = sourceText.value.trim();
         if (!text) return;
 
+        const langPair = (currentMode === 'ja-en') ? "ja|en" : "en|ja";
         resultArea.innerText = "翻訳中...";
-        try {
-            const response = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=ja|en`);
-            const data = await response.json();
-            const translated = data.responseData.translatedText;
-            resultArea.innerText = translated;
 
-            // 翻訳後に英語で読み上げる
-            const uttr = new SpeechSynthesisUtterance(translated);
-            uttr.lang = 'en-US';
+        try {
+            const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${langPair}`;
+            const response = await fetch(url);
+            const data = await response.json();
+            const translatedText = data.responseData.translatedText;
+            
+            resultArea.innerText = translatedText;
+
+            // 読み上げ（結果の言語に合わせて切り替え）
+            const uttr = new SpeechSynthesisUtterance(translatedText);
+            uttr.lang = (currentMode === 'ja-en') ? 'en-US' : 'ja-JP';
             window.speechSynthesis.speak(uttr);
-        } catch (error) {
-            resultArea.innerText = "エラーが発生しました。";
+
+        } catch (e) {
+            resultArea.innerText = "通信エラーが発生しました。";
         }
     }
 
-    // 3. 音声入力機能
+    // 音声認識の設定
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognition) {
         const recognition = new SpeechRecognition();
-        recognition.lang = 'ja-JP';
-
+        
         document.getElementById('mic-btn').onclick = () => {
+            // 現在のモードに合わせて聞き取り言語を変える
+            recognition.lang = (currentMode === 'ja-en') ? 'ja-JP' : 'en-US';
             recognition.start();
         };
 
         recognition.onresult = (event) => {
-            sourceText.value = event.results[0][0].transcript;
-            translateText(); // 聞き取り終わったら自動で翻訳
+            const speechResult = event.results[0][0].transcript;
+            sourceText.value = speechResult;
+            executeTranslation(); // 音声入力後、即座に翻訳
         };
     }
 </script>
