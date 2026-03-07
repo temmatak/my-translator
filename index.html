@@ -3,35 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Translator Pro</title>
+    <title>Translator Compact</title>
     <style>
         body { font-family: sans-serif; background: #f0f4f8; display: flex; justify-content: center; padding: 20px; }
-        .container { background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
+        .container { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
         
-        /* モード表示の強調 */
         .mode-container { 
-            background: #e2e8f0; padding: 10px; border-radius: 10px; 
-            margin-bottom: 15px; text-align: center; font-weight: bold; color: #2d3748;
+            background: #e2e8f0; padding: 8px; border-radius: 8px; 
+            margin-bottom: 12px; text-align: center; font-weight: bold; color: #2d3748;
         }
-        #mode-text { color: #4a90e2; font-size: 1.1rem; }
+        #mode-text { color: #4a90e2; font-size: 0.9rem; }
 
-        textarea { width: 100%; height: 120px; padding: 12px; border: 2px solid #cbd5e0; border-radius: 10px; box-sizing: border-box; font-size: 16px; margin-bottom: 10px; outline: none; }
-        textarea:focus { border-color: #4a90e2; }
-
-        .button-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .btn { padding: 15px; border: none; border-radius: 10px; cursor: pointer; font-size: 16px; font-weight: bold; transition: 0.2s; }
+        textarea { width: 100%; height: 100px; padding: 10px; border: 2px solid #cbd5e0; border-radius: 10px; box-sizing: border-box; font-size: 15px; margin-bottom: 10px; outline: none; }
         
-        /* 各ボタンの色 */
+        /* レイアウト設定 */
+        .button-grid { display: grid; gap: 8px; }
+        .row-upper { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+        .row-lower { display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 8px; } /* 左から 1:2:1 の比率 */
+
+        .btn { padding: 10px 5px; border: none; border-radius: 8px; cursor: pointer; font-size: 11px; font-weight: bold; transition: 0.2s; }
+        
+        /* 色設定 */
         .btn-switch { background: #4a5568; color: white; }
+        .btn-mic { background: #f56565; color: white; }
         .btn-clear { background: #edf2f7; color: #4a5568; }
-        .btn-translate { background: #4a90e2; color: white; grid-column: span 2; }
-        .btn-mic { background: #f56565; color: white; grid-column: span 2; }
+        .btn-translate { background: #4a90e2; color: white; font-size: 13px; } /* 翻訳ボタンは少し目立たせる */
+        .btn-speak { background: #48bb78; color: white; }
 
         .btn:active { transform: scale(0.95); }
 
         #result-area { 
-            margin-top: 20px; padding: 15px; background: #f8fafc; border-radius: 10px; 
-            border-left: 6px solid #4a90e2; min-height: 60px; font-size: 1.1rem; color: #1a202c;
+            margin-top: 15px; padding: 12px; background: #f8fafc; border-radius: 10px; 
+            border-left: 5px solid #4a90e2; min-height: 50px; font-size: 1rem; color: #1a202c;
             word-wrap: break-word;
         }
     </style>
@@ -43,27 +46,31 @@
         <span id="mode-text">🇯🇵 日本語 ➔ 🇺🇸 英語</span>
     </div>
     
-    <textarea id="source-text" placeholder="ここに文字を入力..."></textarea>
+    <textarea id="source-text" placeholder="入力を開始..."></textarea>
     
     <div class="button-grid">
-        <button class="btn btn-switch" onclick="toggleMode()">🔄 入れ替え</button>
-        <button class="btn btn-clear" onclick="clearAll()">🗑️ クリア</button>
-        <button class="btn btn-translate" onclick="executeTranslation()">翻訳を実行</button>
-        <button class="btn btn-mic" id="mic-btn">🎤 音声入力</button>
+        <div class="row-upper">
+            <button class="btn btn-switch" onclick="toggleMode()">🔄 言語切替</button>
+            <button id="mic-btn" class="btn btn-mic">🎤 音声入力</button>
+        </div>
+        
+        <div class="row-lower">
+            <button class="btn btn-clear" onclick="clearAll()">🗑️ クリア</button>
+            <button class="btn btn-translate" onclick="executeTranslation()">翻訳を実行</button>
+            <button id="speak-btn" class="btn btn-speak" onclick="handleSpeak()">🔊 再生/停止</button>
+        </div>
     </div>
 
     <div id="result-area">結果が表示されます</div>
 </div>
 
 <script>
-    // 状態管理用変数
-    let currentMode = 'ja-en'; // 'ja-en' または 'en-ja'
-
+    let currentMode = 'ja-en';
     const modeText = document.getElementById('mode-text');
     const sourceText = document.getElementById('source-text');
     const resultArea = document.getElementById('result-area');
+    let currentTranslation = ""; 
 
-    // モードを切り替える関数
     function toggleMode() {
         if (currentMode === 'ja-en') {
             currentMode = 'en-ja';
@@ -74,17 +81,16 @@
             modeText.innerText = "🇯🇵 日本語 ➔ 🇺🇸 英語";
             sourceText.placeholder = "日本語を入力してください...";
         }
-        // 切り替え時に一旦クリアする
         clearAll();
     }
 
-    // 全てクリアする関数
     function clearAll() {
         sourceText.value = "";
         resultArea.innerText = "結果が表示されます";
+        currentTranslation = "";
+        window.speechSynthesis.cancel(); 
     }
 
-    // 翻訳実行
     async function executeTranslation() {
         const text = sourceText.value.trim();
         if (!text) return;
@@ -96,35 +102,35 @@
             const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${langPair}`;
             const response = await fetch(url);
             const data = await response.json();
-            const translatedText = data.responseData.translatedText;
-            
-            resultArea.innerText = translatedText;
-
-            // 読み上げ（結果の言語に合わせて切り替え）
-            const uttr = new SpeechSynthesisUtterance(translatedText);
-            uttr.lang = (currentMode === 'ja-en') ? 'en-US' : 'ja-JP';
-            window.speechSynthesis.speak(uttr);
-
+            currentTranslation = data.responseData.translatedText;
+            resultArea.innerText = currentTranslation;
         } catch (e) {
             resultArea.innerText = "通信エラーが発生しました。";
         }
     }
 
-    // 音声認識の設定
+    function handleSpeak() {
+        if (window.speechSynthesis.speaking) {
+            window.speechSynthesis.cancel();
+        } else {
+            if (currentTranslation) {
+                const uttr = new SpeechSynthesisUtterance(currentTranslation);
+                uttr.lang = (currentMode === 'ja-en') ? 'en-US' : 'ja-JP';
+                window.speechSynthesis.speak(uttr);
+            }
+        }
+    }
+
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognition) {
         const recognition = new SpeechRecognition();
-        
         document.getElementById('mic-btn').onclick = () => {
-            // 現在のモードに合わせて聞き取り言語を変える
             recognition.lang = (currentMode === 'ja-en') ? 'ja-JP' : 'en-US';
             recognition.start();
         };
-
         recognition.onresult = (event) => {
-            const speechResult = event.results[0][0].transcript;
-            sourceText.value = speechResult;
-            executeTranslation(); // 音声入力後、即座に翻訳
+            sourceText.value = event.results[0][0].transcript;
+            executeTranslation();
         };
     }
 </script>
