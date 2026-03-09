@@ -3,48 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Translator Persistent</title>
+    <title>Translator Long-Text Support</title>
     <style>
         body { font-family: sans-serif; background: #cbd5e0; display: flex; justify-content: center; padding: 15px; }
         .container { background: #718096; padding: 20px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); width: 100%; max-width: 450px; }
-        
-        .header-row { 
-            display: flex; justify-content: space-between; align-items: center;
-            background: #2d3748; padding: 10px 15px; border-radius: 12px; margin-bottom: 15px;
-        }
+        .header-row { display: flex; justify-content: space-between; align-items: center; background: #2d3748; padding: 10px 15px; border-radius: 12px; margin-bottom: 15px; }
         #mode-text { color: #63b3ed; font-weight: bold; font-size: 0.95rem; }
         .btn-switch { background: #edf2f7; color: #2d3748; padding: 8px 12px; border-radius: 8px; border: none; font-size: 12px; cursor: pointer; font-weight: bold; }
-
-        textarea { width: 100%; height: 100px; padding: 12px; border: none; border-radius: 10px; box-sizing: border-box; font-size: 16px; margin-bottom: 15px; outline: none; background: #edf2f7; }
-        
-        .row-middle { 
-            display: grid; 
-            grid-template-columns: 1fr 1fr 1fr; 
-            gap: 8px; 
-            margin-bottom: 15px;
-        }
-
+        textarea { width: 100%; height: 120px; padding: 12px; border: none; border-radius: 10px; box-sizing: border-box; font-size: 16px; margin-bottom: 15px; outline: none; background: #edf2f7; }
+        .row-middle { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 15px; }
         .btn { padding: 14px 2px; border: none; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: bold; transition: 0.1s; white-space: nowrap; }
-        
         .btn-translate { background: #4299e1; color: white; } 
         .btn-speak { background: #48bb78; color: white; }
         .btn-mic { background: #f56565; color: white; }
-
         .result-container { position: relative; margin-top: 5px; }
-
-        #result-area { 
-            padding: 15px; padding-bottom: 45px; 
-            background: white; border-radius: 10px; 
-            border-left: 6px solid #4299e1; min-height: 80px; font-size: 1.1rem; color: #1a202c;
-            word-wrap: break-word;
-        }
-
-        .btn-clear { 
-            position: absolute; right: 10px; bottom: 10px;
-            background: #e2e8f0; color: #4a5568; 
-            padding: 5px 12px; font-size: 11px; border-radius: 6px; border: none; cursor: pointer;
-        }
-
+        #result-area { padding: 15px; padding-bottom: 45px; background: white; border-radius: 10px; border-left: 6px solid #4299e1; min-height: 100px; font-size: 1.05rem; color: #1a202c; word-wrap: break-word; }
+        .btn-clear { position: absolute; right: 10px; bottom: 10px; background: #e2e8f0; color: #4a5568; padding: 5px 12px; font-size: 11px; border-radius: 6px; border: none; cursor: pointer; }
         .btn:active, .btn-clear:active { transform: scale(0.95); opacity: 0.8; }
     </style>
 </head>
@@ -55,15 +29,12 @@
         <span id="mode-text">🇯🇵 日本語 ➔ 🇺🇸 英語</span>
         <button class="btn-switch" onclick="toggleMode()">🔄 言語切替</button>
     </div>
-    
-    <textarea id="source-text" placeholder="入力を開始..."></textarea>
-    
+    <textarea id="source-text" placeholder="ニュース記事などを貼り付けてください..."></textarea>
     <div class="row-middle">
         <button class="btn btn-translate" onclick="executeTranslation()">翻訳を実行</button>
         <button id="speak-btn" class="btn btn-speak" onclick="handleSpeak()">🔊 再生/停止</button>
         <button id="mic-btn" class="btn btn-mic">🎤 音声入力</button>
     </div>
-
     <div class="result-container">
         <div id="result-area">結果が表示されます</div>
         <button class="btn-clear" onclick="clearAll()">🗑️ クリア</button>
@@ -77,21 +48,18 @@
     const resultArea = document.getElementById('result-area');
     let currentTranslation = ""; 
 
-    // 言語切替（クリア機能を削除しました）
     function toggleMode() {
         if (currentMode === 'ja-en') {
             currentMode = 'en-ja';
             modeText.innerText = "🇺🇸 英語 ➔ 🇯🇵 日本語";
-            sourceText.placeholder = "Enter English text...";
+            sourceText.placeholder = "Enter news article...";
         } else {
             currentMode = 'ja-en';
             modeText.innerText = "🇯🇵 日本語 ➔ 🇺🇸 英語";
-            sourceText.placeholder = "日本語を入力してください...";
+            sourceText.placeholder = "日本語のニュースなどを入力...";
         }
-        // ここにあった clearAll() を削除しました
     }
 
-    // クリア（明示的にボタンを押した時のみ実行）
     function clearAll() {
         sourceText.value = "";
         resultArea.innerText = "結果が表示されます";
@@ -99,21 +67,30 @@
         window.speechSynthesis.cancel(); 
     }
 
+    // 長文を分割して翻訳する新機能
     async function executeTranslation() {
-        const text = sourceText.value.trim();
-        if (!text) return;
+        const fullText = sourceText.value.trim();
+        if (!fullText) return;
 
+        resultArea.innerText = "長い文章を解析中...";
+        
+        // 文章を句点、読点、改行で分割（最大500文字程度を目安にする）
+        const chunks = fullText.match(/.{1,400}(?:\。|\.|\n|$)/g) || [fullText];
+        
         const langPair = (currentMode === 'ja-en') ? "ja|en" : "en|ja";
-        resultArea.innerText = "翻訳中...";
+        let finalResult = "";
 
         try {
-            const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${langPair}`;
-            const response = await fetch(url);
-            const data = await response.json();
-            currentTranslation = data.responseData.translatedText;
+            for (let i = 0; i < chunks.length; i++) {
+                resultArea.innerText = `翻訳中... (${i+1}/${chunks.length})`;
+                const response = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(chunks[i])}&langpair=${langPair}`);
+                const data = await response.json();
+                finalResult += data.responseData.translatedText + " ";
+            }
+            currentTranslation = finalResult;
             resultArea.innerText = currentTranslation;
         } catch (e) {
-            resultArea.innerText = "通信エラーが発生しました。";
+            resultArea.innerText = "長文エラーが発生しました。少し時間を置いて試すか、文章を短くしてください。";
         }
     }
 
@@ -124,6 +101,8 @@
             if (currentTranslation) {
                 const uttr = new SpeechSynthesisUtterance(currentTranslation);
                 uttr.lang = (currentMode === 'ja-en') ? 'en-US' : 'ja-JP';
+                // 長文再生時は少し速度を調整
+                uttr.rate = 1.0; 
                 window.speechSynthesis.speak(uttr);
             }
         }
