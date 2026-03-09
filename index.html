@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Translator Pro Dark</title>
+    <title>Translator Balanced Pro</title>
     <style>
         /* 全体の背景（薄いグレー） */
         body { font-family: sans-serif; background: #cbd5e0; display: flex; justify-content: center; padding: 15px; }
         
-        /* Translatorの枠内（背景より濃いグレー） */
-        .container { background: #4a5568; padding: 20px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); width: 100%; max-width: 450px; }
+        /* Translatorの枠内（少し明るいグレーに調整） */
+        .container { background: #718096; padding: 20px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); width: 100%; max-width: 450px; }
         
         /* 最上段：モード表示と言語切替 */
         .header-row { 
@@ -21,31 +21,31 @@
 
         textarea { width: 100%; height: 100px; padding: 12px; border: none; border-radius: 10px; box-sizing: border-box; font-size: 16px; margin-bottom: 15px; outline: none; background: #edf2f7; }
         
-        /* 中段：ボタン横一列（翻訳2 : 再生1 : 音声1） */
+        /* 中段：ボタン横一列（翻訳1 : 再生1 : 音声1 の均等比率） */
         .row-middle { 
             display: grid; 
-            grid-template-columns: 2fr 1fr 1fr; 
+            grid-template-columns: 1fr 1fr 1fr; 
             gap: 8px; 
             margin-bottom: 15px;
         }
 
-        .btn { padding: 14px 2px; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.1s; white-space: nowrap; }
+        .btn { padding: 14px 2px; border: none; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: bold; transition: 0.1s; white-space: nowrap; }
         
         .btn-translate { background: #4299e1; color: white; } 
         .btn-speak { background: #48bb78; color: white; }
         .btn-mic { background: #f56565; color: white; }
 
-        /* 結果表示エリアの親要素（相対配置用） */
+        /* 結果表示エリアの親要素 */
         .result-container { position: relative; margin-top: 5px; }
 
         #result-area { 
-            padding: 15px; padding-bottom: 45px; /* ボタンが重ならないよう下を空ける */
+            padding: 15px; padding-bottom: 45px; 
             background: white; border-radius: 10px; 
             border-left: 6px solid #4299e1; min-height: 80px; font-size: 1.1rem; color: #1a202c;
             word-wrap: break-word;
         }
 
-        /* クリアボタンを結果エリアの右下に配置 */
+        /* クリアボタン */
         .btn-clear { 
             position: absolute; right: 10px; bottom: 10px;
             background: #e2e8f0; color: #4a5568; 
@@ -67,8 +67,8 @@
     
     <div class="row-middle">
         <button class="btn btn-translate" onclick="executeTranslation()">翻訳を実行</button>
-        <button id="speak-btn" class="btn btn-speak" onclick="handleSpeak()">🔊 再生</button>
-        <button id="mic-btn" class="btn btn-mic">🎤 音声</button>
+        <button id="speak-btn" class="btn btn-speak" onclick="handleSpeak()">🔊 再生/停止</button>
+        <button id="mic-btn" class="btn btn-mic">🎤 音声入力</button>
     </div>
 
     <div class="result-container">
